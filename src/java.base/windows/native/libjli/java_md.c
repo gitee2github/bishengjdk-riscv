@@ -655,7 +655,7 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
             message[len + 1] = ' ';
             JLI_StrCat(message, errtext);
         } else {
-        	message[len]='\0';
+            message[len]='\0';
         }
 
         MessageBox(NULL, message, "Java Virtual Machine Launcher",
