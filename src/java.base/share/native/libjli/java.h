@@ -136,7 +136,11 @@ void CreateExecutionEnvironment(int *argc, char ***argv,
 JNIEXPORT void JNICALL
 JLI_ReportErrorMessage(const char * message, ...);
 
-/* Reports a system error message to stderr or a window */
+/*
+ * Just like JLI_ReportErrorMessage, except that it concatenates the system
+ * error message if any, with a separator similar to std::perror. The error
+ * that was reported is cleared after this is called.
+ */
 JNIEXPORT void JNICALL
 JLI_ReportErrorMessageSys(const char * message, ...);
 

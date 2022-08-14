@@ -200,19 +200,23 @@ JLI_ReportErrorMessage(const char* fmt, ...) {
 JNIEXPORT void JNICALL
 JLI_ReportErrorMessageSys(const char* fmt, ...) {
     va_list vl;
-    char *emsg;
-
-    /*
-     * TODO: its safer to use strerror_r but is not available on
-     * Solaris 8. Until then....
-     */
-    emsg = strerror(errno);
-    if (emsg != NULL) {
-        fprintf(stderr, "%s\n", emsg);
-    }
 
     va_start(vl, fmt);
     vfprintf(stderr, fmt, vl);
+
+    if (errno != 0) {
+        /*
+         * Buffer size of 1024 copied from typical POSIX size used
+         * in strerror_r
+         */
+        char error[1024];
+        if(strerror_r(errno, error, sizeof error) == 0) {
+            fprintf(stderr, ": %s", error);
+        } else {
+        	fprintf(stderr, ": Java could not determine the underlying error");
+        }
+        errno = 0;
+    }
     fprintf(stderr, "\n");
     va_end(vl);
 }
