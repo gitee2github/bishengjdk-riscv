@@ -606,35 +606,29 @@ JLI_ReportErrorMessage(const char* fmt, ...) {
 }
 
 JNIEXPORT void JNICALL
-JLI_ReportErrorMessageSys(jboolean crterr, const char *fmt, ...)
+JLI_ReportErrorMessageWin32(const char *fmt, ...)
 {
     va_list vl;
 
     DWORD       errval;
-    jboolean freeit = JNI_FALSE;
     char  *errtext = NULL;
 
     va_start(vl, fmt);
-
-    if (crterr == JNI_FALSE) {               /* Platform SDK / DOS Error */
-        if((errval = GetLastError()) != 0) {
-            int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
-                FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-                NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
-            if (errtext == NULL || n == 0) {                /* Paranoia check */
-                errtext = "Java could not determine the native Windows error";
-                n = 0;
-            } else {
-                freeit = JNI_TRUE;
-                if (n > 2) {                                /* Drop final CR, LF */
-                    if (errtext[n - 1] == '\n') n--;
-                    if (errtext[n - 1] == '\r') n--;
-                    errtext[n] = '\0';
-                }
+    /* Platform SDK / DOS Error */
+    if((errval = GetLastError()) != 0) {
+        int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
+            FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+            NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
+        if (errtext == NULL || n == 0) {                /* Paranoia check */
+            errtext = "Java could not determine the native Windows error";
+            n = 0;
+        } else {
+            if (n > 2) {                                /* Drop final CR, LF */
+                if (errtext[n - 1] == '\n') n--;
+                if (errtext[n - 1] == '\r') n--;
+                errtext[n] = '\0';
             }
         }
-    } else {   /* C runtime error that has no corresponding DOS error code */
-        errtext = strerror(errno);
     }
 
     if (IsJavaw()) {
@@ -668,8 +662,52 @@ JLI_ReportErrorMessageSys(jboolean crterr, const char *fmt, ...)
         }
         fprintf(stderr, "\n");
     }
-    if (freeit) {
+    if (errtext != NULL) {
         (void)LocalFree((HLOCAL)errtext);
+    }
+    va_end(vl);
+}
+
+JNIEXPORT void JNICALL
+JLI_ReportErrorMessageSys(const char *fmt, ...)
+{
+    va_list vl;
+
+    /* C runtime error that has no corresponding DOS error code */
+    char  *errtext = strerror(errno);
+
+    va_start(vl, fmt);
+
+    if (IsJavaw()) {
+        char *message;
+        int mlen;
+        /* get the length of the string we need */
+        int len = mlen =  _vscprintf(fmt, vl) + 1;
+        if (errtext != NULL) {
+           mlen += 1 + (int)JLI_StrLen(errtext);
+        }
+
+        message = (char *)JLI_MemAlloc(mlen);
+        _vsnprintf(message, len, fmt, vl);
+
+        if (errtext != NULL) {
+            message[len] = ':';
+            message[len + 1] = ' ';
+            JLI_StrCat(message, errtext);
+        } else {
+            message[len]='\0';
+        }
+
+        MessageBox(NULL, message, "Java Virtual Machine Launcher",
+            (MB_OK|MB_ICONSTOP|MB_APPLMODAL));
+
+        JLI_MemFree(message);
+    } else {
+        vfprintf(stderr, fmt, vl);
+        if (errtext != NULL) {
+           fprintf(stderr, ": %s", errtext);
+        }
+        fprintf(stderr, "\n");
     }
     va_end(vl);
 }

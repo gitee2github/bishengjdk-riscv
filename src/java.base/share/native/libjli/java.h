@@ -138,14 +138,10 @@ JLI_ReportErrorMessage(const char * message, ...);
 
 /*
  * Just like JLI_ReportErrorMessage, except that it concatenates the system
- * error message if any, with a separator similar to std::perror.
+ * error message if any, similarly to std::perror.
  */
 JNIEXPORT void JNICALL
-#ifdef _WIN32
-JLI_ReportErrorMessageSys(jboolean crterr, const char * message, ...);
-#else
 JLI_ReportErrorMessageSys(const char * message, ...);
-#endif
 
 /* Reports an error message only to stderr. */
 JNIEXPORT void JNICALL
