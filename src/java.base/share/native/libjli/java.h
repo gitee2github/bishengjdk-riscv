@@ -138,12 +138,14 @@ JLI_ReportErrorMessage(const char * message, ...);
 
 /*
  * Just like JLI_ReportErrorMessage, except that it concatenates the system
- * error message if any, with a separator similar to std::perror. The error
- * that was reported is cleared after this is called. For better accuracy,
- * this should be called immediately after a library call fails.
+ * error message if any, with a separator similar to std::perror.
  */
 JNIEXPORT void JNICALL
+#ifdef _WIN32
+JLI_ReportErrorMessageSys(jboolean crterr, const char * message, ...);
+#else
 JLI_ReportErrorMessageSys(const char * message, ...);
+#endif
 
 /* Reports an error message only to stderr. */
 JNIEXPORT void JNICALL
