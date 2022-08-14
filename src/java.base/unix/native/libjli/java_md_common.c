@@ -213,7 +213,7 @@ JLI_ReportErrorMessageSys(const char* fmt, ...) {
         if(strerror_r(errno, error, sizeof error) == 0) {
             fprintf(stderr, ": %s", error);
         } else {
-        	fprintf(stderr, ": Java could not determine the underlying error");
+            fprintf(stderr, ": Java could not determine the underlying error");
         }
         errno = 0;
     }
