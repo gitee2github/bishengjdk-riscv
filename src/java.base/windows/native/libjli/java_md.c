@@ -605,78 +605,46 @@ JLI_ReportErrorMessage(const char* fmt, ...) {
     va_end(vl);
 }
 
-JNIEXPORT void JNICALL
-JLI_ReportErrorMessageWin32(const char *fmt, ...)
-{
-    va_list vl;
-
-    DWORD       errval;
-    char  *errtext = NULL;
-
-    va_start(vl, fmt);
-    /* Platform SDK / DOS Error */
-    if((errval = GetLastError()) != 0) {
-        int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
-            FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-            NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
-        if (errtext == NULL || n == 0) {                /* Paranoia check */
-            errtext = "Java could not determine the native Windows error";
-            n = 0;
-        } else {
-            if (n > 2) {                                /* Drop final CR, LF */
-                if (errtext[n - 1] == '\n') n--;
-                if (errtext[n - 1] == '\r') n--;
-                errtext[n] = '\0';
-            }
-        }
-    }
-
-    if (IsJavaw()) {
-        char *message;
-        int mlen;
-        /* get the length of the string we need */
-        int len = mlen =  _vscprintf(fmt, vl) + 1;
-        if (errtext != NULL) {
-           mlen += 1 + (int)JLI_StrLen(errtext);
-        }
-
-        message = (char *)JLI_MemAlloc(mlen);
-        _vsnprintf(message, len, fmt, vl);
-
-        if (errtext != NULL) {
-            message[len] = ':';
-            message[len + 1] = ' ';
-            JLI_StrCat(message, errtext);
-        } else {
-            message[len]='\0';
-        }
-
-        MessageBox(NULL, message, "Java Virtual Machine Launcher",
-            (MB_OK|MB_ICONSTOP|MB_APPLMODAL));
-
-        JLI_MemFree(message);
-    } else {
-        vfprintf(stderr, fmt, vl);
-        if (errtext != NULL) {
-           fprintf(stderr, ": %s", errtext);
-        }
-        fprintf(stderr, "\n");
-    }
-    if (errtext != NULL) {
-        (void)LocalFree((HLOCAL)errtext);
-    }
-    va_end(vl);
-}
-
+/*
+ * Because Windows API errors and regular errno errors can exist at the same time,
+ * compromise and error out when both are present. Windows code should ideally clear
+ * the last error before a call that sets either of these!
+ */
 JNIEXPORT void JNICALL
 JLI_ReportErrorMessageSys(const char *fmt, ...)
 {
     va_list vl;
+    DWORD       errval;
+    char  *errtext = NULL;
+
+    const char* const errconflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
+    const char* const winerrcannotresolve = "Java could not determine the native Windows error";
 
     /* C runtime error that has no corresponding DOS error code */
-    char  *errtext = strerror(errno);
+    errtext = strerror(errno);
 
     va_start(vl, fmt);
+
+    /* Platform SDK / DOS Error */
+    if((errval = GetLastError()) != 0) {
+        if(errtext != NULL) {
+        	errtext = errconflict;
+        } else {
+            int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
+                FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+                NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
+            if (errtext == NULL || n == 0) {                /* Paranoia check */
+                errtext = winerrcannotresolve;
+                n = 0;
+            } else {
+                if (n > 2) {                                /* Drop final CR, LF */
+                    if (errtext[n - 1] == '\n') n--;
+                    if (errtext[n - 1] == '\r') n--;
+                    errtext[n] = '\0';
+                }
+            }
+        }
+    }
 
     if (IsJavaw()) {
         char *message;

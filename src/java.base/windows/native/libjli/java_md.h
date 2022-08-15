@@ -47,10 +47,4 @@
 
 int UnsetEnv(char *name);
 
-/*
- * Windows API calls are entirely separate from the regular errors that errno can
- * record
- */
-JNIEXPORT void JNICALL JLI_ReportErrorMessageWin32(const char *fmt, ...);
-
 #endif /* JAVA_MD_H */
