@@ -628,7 +628,7 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     /* Platform SDK / DOS Error */
     if((errval = GetLastError()) != 0) {
         if(errtext != NULL) {
-        	errtext = errconflict;
+            errtext = errconflict;
         } else {
             int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
                 FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
