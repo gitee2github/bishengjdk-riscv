@@ -615,6 +615,7 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
 {
     va_list vl;
     DWORD       errval;
+    jboolean freeit = JNI_FALSE;
     char  *errtext = NULL;
 
     char* const errconflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
@@ -637,6 +638,7 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
                 errtext = winerrcannotresolve;
                 n = 0;
             } else {
+                freeit = JNI_TRUE;
                 if (n > 2) {                                /* Drop final CR, LF */
                     if (errtext[n - 1] == '\n') n--;
                     if (errtext[n - 1] == '\r') n--;
@@ -676,6 +678,9 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
            fprintf(stderr, ": %s", errtext);
         }
         fprintf(stderr, "\n");
+    }
+    if (freeit) {
+        (void)LocalFree((HLOCAL)errtext);
     }
     va_end(vl);
 }
