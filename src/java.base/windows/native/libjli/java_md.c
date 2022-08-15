@@ -618,8 +618,8 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     jboolean freeit = JNI_FALSE;
     char  *errtext = NULL;
 
-    char* const errconflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
-    char* const winerrcannotresolve = "Java could not determine the native Windows error";
+    char* const conflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
+    char* const unknown = "Java could not determine the native Windows error";
 
     /* C runtime error that has no corresponding DOS error code */
     errtext = strerror(errno);
@@ -629,13 +629,13 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     /* Platform SDK / DOS Error */
     if((errval = GetLastError()) != 0) {
         if(errtext != NULL) {
-            errtext = errconflict;
+            errtext = conflict;
         } else {
             int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
                 FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
                 NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
             if (errtext == NULL || n == 0) {                /* Paranoia check */
-                errtext = winerrcannotresolve;
+                errtext = unknown;
                 n = 0;
             } else {
                 freeit = JNI_TRUE;
