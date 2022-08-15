@@ -623,8 +623,8 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
 
     /* C runtime error that has no corresponding DOS error code */
     if(errno != 0) {
-    	errtext = strerror(errno);
-    	if(errtext == NULL) errtext = unknown;
+        errtext = strerror(errno);
+        if(errtext == NULL) errtext = unknown;
     }
 
     va_start(vl, fmt);
