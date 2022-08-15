@@ -617,8 +617,8 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     DWORD       errval;
     char  *errtext = NULL;
 
-    const char* const errconflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
-    const char* const winerrcannotresolve = "Java could not determine the native Windows error";
+    char* const errconflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
+    char* const winerrcannotresolve = "Java could not determine the native Windows error";
 
     /* C runtime error that has no corresponding DOS error code */
     errtext = strerror(errno);
