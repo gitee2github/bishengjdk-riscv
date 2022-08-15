@@ -619,10 +619,13 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     char  *errtext = NULL;
 
     char* const conflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
-    char* const unknown = "Java could not determine the native Windows error";
+    char* const unknown = "Java could not determine the underlying error";
 
     /* C runtime error that has no corresponding DOS error code */
-    errtext = strerror(errno);
+    if(errno != 0) {
+    	errtext = strerror(errno);
+    	if(errtext == NULL) errtext = unknown;
+    }
 
     va_start(vl, fmt);
 
