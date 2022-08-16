@@ -623,34 +623,33 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
 
     va_start(vl, fmt);
 
-    /* Platform SDK / DOS Error */
-    if((errval = GetLastError()) != 0) {
-        int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
-            FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-            NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
-        if (errtext == NULL || n == 0) {                /* Paranoia check */
-            errtext = unknown;
-            n = 0;
-        } else {
-            freeit = JNI_TRUE;
-            if (n > 3) {                                /* Drop final CR, LF */
-                if (errtext[n - 1] == '\n') n--;
-                if (errtext[n - 1] == '\r') n--;
-                if (errtext[n - 1] == '.') n--;         /* Drop '.' to match getLastErrorString */
-                errtext[n] = '\0';
-            }
-        }
-    }
-
-    /* C runtime error that has no corresponding DOS error code */
-    if(errno != 0) {
-        errtext = strerror(errno);
-        if(errtext == NULL) errtext = unknown;
-    }
-
-    /* Final safety check to catch conflicting errors */
+    /* Check to catch conflicting errors */
     if(GetLastError() != 0 && errno != 0) {
         errtext = conflict;
+    } else {
+        if((errval = GetLastError()) != 0) {               /* Platform SDK / DOS Error */
+            int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
+                FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+                NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
+            if (errtext == NULL || n == 0) {                /* Paranoia check */
+                errtext = unknown;
+                n = 0;
+            } else {
+                freeit = JNI_TRUE;
+                if (n > 3) {                                /* Drop final CR, LF */
+                    if (errtext[n - 1] == '\n') n--;
+                    if (errtext[n - 1] == '\r') n--;
+                    if (errtext[n - 1] == '.') n--;         /* Drop '.' to match getLastErrorString */
+                    errtext[n] = '\0';
+                }
+            }
+        }
+
+        /* C runtime error that has no corresponding DOS error code */
+        if(errno != 0) {
+            errtext = strerror(errno);
+            if(errtext == NULL) errtext = unknown;
+        }
     }
 
     if (IsJavaw()) {
