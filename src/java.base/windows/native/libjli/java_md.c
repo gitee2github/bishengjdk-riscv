@@ -621,34 +621,35 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     char* const conflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
     char* const unknown = "Java could not determine the underlying error";
 
-    /* C runtime error that has no corresponding DOS error code */
-    if(errno != 0) {
-        errtext = strerror(errno);
-        if(errtext == NULL) errtext = unknown;
+    if(GetLastError() != 0 && errno != 0) { /* Relay conflict if both are set */
+    	errtext = conflict;
     }
 
     va_start(vl, fmt);
 
     /* Platform SDK / DOS Error */
     if((errval = GetLastError()) != 0) {
-        if(errtext != NULL) {
-            errtext = conflict;
+        int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
+            FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
+            NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
+        if (errtext == NULL || n == 0) {                /* Paranoia check */
+            errtext = unknown;
+            n = 0;
         } else {
-            int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
-                FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
-                NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
-            if (errtext == NULL || n == 0) {                /* Paranoia check */
-                errtext = unknown;
-                n = 0;
-            } else {
-                freeit = JNI_TRUE;
-                if (n > 2) {                                /* Drop final CR, LF */
-                    if (errtext[n - 1] == '\n') n--;
-                    if (errtext[n - 1] == '\r') n--;
-                    errtext[n] = '\0';
-                }
+            freeit = JNI_TRUE;
+            if (n > 3) {                                /* Drop final CR, LF */
+                if (errtext[n - 1] == '\n') n--;
+                if (errtext[n - 1] == '\r') n--;
+                if (errtext[n - 1] == '.') n--;         /* Drop '.' to match getLastErrorString */
+                errtext[n] = '\0';
             }
         }
+    }
+
+    /* C runtime error that has no corresponding DOS error code */
+    if(errno != 0) {
+        errtext = strerror(errno);
+        if(errtext == NULL) errtext = unknown;
     }
 
     if (IsJavaw()) {
