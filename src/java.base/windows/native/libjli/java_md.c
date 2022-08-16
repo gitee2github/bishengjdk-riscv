@@ -621,10 +621,6 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     char* const conflict = "Java detected conflicting Windows and C Runtime errors and is unable to provide an accurate report";
     char* const unknown = "Java could not determine the underlying error";
 
-    if(GetLastError() != 0 && errno != 0) { /* Relay conflict if both are set */
-    	errtext = conflict;
-    }
-
     va_start(vl, fmt);
 
     /* Platform SDK / DOS Error */
@@ -650,6 +646,11 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     if(errno != 0) {
         errtext = strerror(errno);
         if(errtext == NULL) errtext = unknown;
+    }
+
+    /* Final safety check to catch conflicting errors */
+    if(GetLastError() != 0 && errno != 0) {
+        errtext = conflict;
     }
 
     if (IsJavaw()) {
