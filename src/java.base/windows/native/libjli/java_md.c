@@ -607,8 +607,7 @@ JLI_ReportErrorMessage(const char* fmt, ...) {
 
 /*
  * Because Windows API errors and regular errno errors can exist at the same time,
- * compromise and error out when both are present. Windows code should ideally clear
- * the last error before a call that sets either of these!
+ * warn that the resulting report may not be accurate when both are present.
  */
 JNIEXPORT void JNICALL
 JLI_ReportErrorMessageSys(const char *fmt, ...)
