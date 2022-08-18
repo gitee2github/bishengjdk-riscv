@@ -624,10 +624,10 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
     va_start(vl, fmt);
 
     /* Check to catch conflicting errors */
-    if(GetLastError() != 0 && errno != 0) {
+    if (GetLastError() != 0 && errno != 0) {
         errtext = conflict;
     } else {
-        if((errval = GetLastError()) != 0) {               /* Platform SDK / DOS Error */
+        if ((errval = GetLastError()) != 0) {               /* Platform SDK / DOS Error */
             int n = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|
                 FORMAT_MESSAGE_IGNORE_INSERTS|FORMAT_MESSAGE_ALLOCATE_BUFFER,
                 NULL, errval, 0, (LPTSTR)&errtext, 0, NULL);
@@ -645,8 +645,7 @@ JLI_ReportErrorMessageSys(const char *fmt, ...)
             }
         }
 
-        /* C runtime error that has no corresponding DOS error code */
-        if(errno != 0) {
+        if (errno != 0) {                                   /* C runtime error that has no corresponding DOS error code */
             errtext = strerror(errno);
             if(errtext == NULL) errtext = unknown;
         }

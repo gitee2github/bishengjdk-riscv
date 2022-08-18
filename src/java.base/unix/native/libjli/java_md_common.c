@@ -210,12 +210,11 @@ JLI_ReportErrorMessageSys(const char* fmt, ...) {
          * in strerror_r
          */
         char error[1024];
-        if(strerror_r(errno, error, sizeof error) == 0) {
+        if (strerror_r(errno, error, sizeof error) == 0) {
             fprintf(stderr, ": %s", error);
         } else {
             fprintf(stderr, ": Java could not determine the underlying error");
         }
-        errno = 0;
     }
     fprintf(stderr, "\n");
     va_end(vl);
