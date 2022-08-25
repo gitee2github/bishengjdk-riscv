@@ -53,6 +53,7 @@ import javax.swing.undo.AbstractUndoableEdit;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import org.netbeans.api.visual.action.*;
+import org.netbeans.api.visual.animator.Animator;
 import org.netbeans.api.visual.animator.SceneAnimator;
 import org.netbeans.api.visual.layout.LayoutFactory;
 import org.netbeans.api.visual.model.*;
@@ -63,8 +64,75 @@ import org.openide.nodes.AbstractNode;
 import org.openide.nodes.Children;
 import org.openide.nodes.Sheet;
 import org.openide.util.Lookup;
+import org.openide.util.Utilities;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
+
+class CustomZoomAnimator extends Animator {
+    private volatile double sourceZoom;
+    private volatile double targetZoom;
+    private volatile Point zoomCenter;
+
+    public CustomZoomAnimator(SceneAnimator sceneAnimator) {
+        super(sceneAnimator);
+    }
+
+    public void animateZoomFactor(double zoomFactor, Point mouseLocation) {
+        this.zoomCenter = mouseLocation;
+        this.sourceZoom = this.getScene().getZoomFactor();
+        this.targetZoom = zoomFactor;
+        this.start();
+    }
+
+    public double getTargetZoom() {
+        return this.targetZoom;
+    }
+
+    public void tick(double progress) {
+        if (this.zoomCenter != null) {
+            this.mouseCenteredZoom(progress);
+        } else {
+            this.centeredZoom(progress);
+        }
+    }
+
+    private void centeredZoom(double progress) {
+        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
+        Point sceneCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
+        sceneCenter = this.getScene().convertViewToScene(sceneCenter);
+
+        this.getScene().setZoomFactor(progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom));
+        this.getScene().validate();
+
+        Point newViewCenter = this.getScene().convertSceneToView(sceneCenter);
+        Rectangle newVisibleRect = new Rectangle(
+                newViewCenter.x - oldVisibleRect.width / 2,
+                newViewCenter.y - oldVisibleRect.height / 2,
+                oldVisibleRect.width, oldVisibleRect.height);
+        this.getScene().getView().scrollRectToVisible(newVisibleRect);
+
+    }
+
+    public void mouseCenteredZoom(double progress) {
+        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
+        Point sceneCenter = this.zoomCenter;
+        Point oldViewCenter = this.getScene().convertSceneToView(sceneCenter);
+
+        double newZoom = progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom);
+        this.getScene().setZoomFactor(newZoom);
+        this.getScene().validate();
+
+        Point newViewCenter = this.getScene().convertSceneToView(sceneCenter);
+        Rectangle newVisibleRect = new Rectangle (
+                newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
+                newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
+                oldVisibleRect.width,
+                oldVisibleRect.height
+        );
+        this.getScene().getView().scrollRectToVisible(newVisibleRect);
+    }
+}
+
 
 /**
  *
@@ -90,6 +158,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private DiagramViewModel modelCopy;
     private boolean rebuilding;
 
+    private CustomZoomAnimator zoomAnimator = new CustomZoomAnimator(this.getSceneAnimator());;
+
+
     /**
      * The alpha level of partially visible figures.
      */
@@ -104,7 +175,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private static final int SCROLL_BLOCK_INCREMENT = 400;
     private static final double ZOOM_MAX_FACTOR = 3.0d;
     private static final double ZOOM_MIN_FACTOR = 0.1d;
-    private static final double ZOOM_INCREMENT = 1.1d;
+    private static final double ZOOM_INCREMENT = 1.2d;
     private static final int SLOT_OFFSET = 8;
     private static final int ANIMATION_LIMIT = 40;
 
@@ -173,30 +244,35 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void zoomOut() {
-        double newZoom = getZoomFactor() / DiagramScene.ZOOM_INCREMENT;
-        if (newZoom < this.getZoomMinFactor()) {
-            newZoom = this.getZoomMinFactor();
-        }
-        zoom(newZoom);
+        zoomOut(null);
+    }
+
+    @Override
+    public void zoomOut(Point zoomCenter) {
+        zoom(1.0 / DiagramScene.ZOOM_INCREMENT, zoomCenter);
     }
 
     @Override
     public void zoomIn() {
-        double newZoom = getZoomFactor() * DiagramScene.ZOOM_INCREMENT;
-        if (newZoom > this.getZoomMaxFactor()) {
-            newZoom = this.getZoomMaxFactor();
-        }
-        zoom(newZoom);
+        zoomIn(null);
     }
 
-    private void zoom(double newZoom) {
-        double currentZoom = getZoomFactor();
-        Point viewPosition = getScrollPane().getViewport().getViewPosition();
-        Rectangle viewRect = getScrollPane().getViewport().getViewRect();
-        setZoomFactor(newZoom);
-        validate();
-        getScrollPane().getViewport().validate();
-        getScrollPane().getViewport().setViewPosition(new Point((int) ((viewPosition.x + viewRect.width / 2) * newZoom / currentZoom - viewRect.width / 2), (int) ((viewPosition.y + viewRect.height / 2) * newZoom / currentZoom - viewRect.height / 2)));
+    @Override
+    public void zoomIn(Point zoomCenter) {
+        zoom(DiagramScene.ZOOM_INCREMENT, zoomCenter);
+    }
+
+    private void zoom(double zoomMultiplier, Point zoomCenter) {
+        synchronized (this.getSceneAnimator()) {
+            double zoomFactor = this.zoomAnimator.isRunning() ? this.zoomAnimator.getTargetZoom() : this.getZoomFactor();
+            zoomFactor *= zoomMultiplier;
+            if (zoomFactor < this.getZoomMinFactor()) {
+                zoomFactor = this.getZoomMinFactor();
+            } else if (zoomFactor > this.getZoomMaxFactor()) {
+                zoomFactor = this.getZoomMaxFactor();
+            }
+            this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
+        }
     }
 
     @Override
@@ -292,23 +368,48 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     }
 
     private JScrollPane createScrollPane() {
-        JComponent comp = this.createView();
-        comp.setDoubleBuffered(true);
-        comp.setBackground(Color.WHITE);
-        comp.setOpaque(true);
+        JComponent viewComponent = this.createView();
+        viewComponent.setDoubleBuffered(true);
+        viewComponent.setBackground(Color.WHITE);
+        viewComponent.setOpaque(true);
         this.setBackground(Color.WHITE);
         this.setOpaque(true);
         JPanel centeringPanel = new JPanel(new GridBagLayout());
         centeringPanel.setBackground(Color.WHITE);
         centeringPanel.setOpaque(true);
-        centeringPanel.add(comp);
-        JScrollPane result = new JScrollPane(centeringPanel);
-        result.setBackground(Color.WHITE);
-        result.getVerticalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
-        result.getVerticalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
-        result.getHorizontalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
-        result.getHorizontalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
-        return result;
+        centeringPanel.add(viewComponent);
+        JScrollPane scrollPane = new JScrollPane(centeringPanel);
+        scrollPane.setBackground(Color.WHITE);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
+        scrollPane.getVerticalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
+        scrollPane.getHorizontalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
+
+        // remove the default MouseWheelListener of the JScrollPane
+        for (MouseWheelListener listener: scrollPane.getMouseWheelListeners()) {
+            scrollPane.removeMouseWheelListener(listener);
+        }
+
+        // add a new MouseWheelListener for zooming if the mouse is outside of the viewComponent
+        // but still inside of the scrollPane
+        scrollPane.addMouseWheelListener(new MouseWheelListener() {
+            private int modifiers = Utilities.isMac() ? KeyEvent.META_MASK : KeyEvent.CTRL_MASK;
+            @Override
+            public void mouseWheelMoved(MouseWheelEvent event) {
+                if ((event.getModifiers() & modifiers) != modifiers) {
+                    return;
+                }
+                double zoom = DiagramScene.this.getZoomFactor();
+                int n = event.getWheelRotation();
+                if (n > 0) {
+                    DiagramScene.this.zoomOut();
+                } else if (n < 0) {
+                    DiagramScene.this.zoomIn();
+                }
+            }
+        });
+
+        return scrollPane;
     }
     private ObjectSceneListener selectionChangedListener = new ObjectSceneListener() {
 
@@ -466,7 +567,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         this.addChild(bottomRight);
 
         this.setLayout(LayoutFactory.createAbsoluteLayout());
-        this.getActions().addAction(new MouseCenteredZoomAction(1.1, this));
+        this.getActions().addAction(new MouseCenteredZoomAction(this));
         this.getActions().addAction(ActionFactory.createPopupMenuAction(popupMenuProvider));
 
         LayerWidget selectLayer = new LayerWidget(this);

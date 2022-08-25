@@ -25,9 +25,8 @@
 package com.sun.hotspot.igv.view;
 
 import com.sun.hotspot.igv.graph.Figure;
-import java.awt.Component;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
+
+import java.awt.*;
 import java.util.Collection;
 import java.util.List;
 import javax.swing.JComponent;
@@ -53,13 +52,13 @@ interface DiagramViewer {
 
     public Component getComponent();
 
-    public double getZoomMinFactor();
-
-    public double getZoomMaxFactor();
-
     public void zoomOut();
 
+    public void zoomOut(Point zoomCenter);
+
     public void zoomIn();
+
+    public void zoomIn(Point zoomCenter);
 
     public UndoRedo getUndoRedo();
 
