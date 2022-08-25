@@ -23,6 +23,15 @@
         <file name="D-DOWN.shadow">
             <attr name="originalFile" stringvalue="Actions/View/com-sun-hotspot-igv-view-actions-ShrinkDiffAction.instance"/>
         </file>
+        <file name="D-MINUS.shadow">
+            <attr name="originalFile" stringvalue="Actions/View/com-sun-hotspot-igv-view-actions-ZoomOutAction.instance"/>
+        </file>
+        <file name="DS-MINUS.shadow">
+            <attr name="originalFile" stringvalue="Actions/View/com-sun-hotspot-igv-view-actions-ZoomInAction.instance"/>
+        </file>
+        <file name="D-EQUALS.shadow">
+            <attr name="originalFile" stringvalue="Actions/View/com-sun-hotspot-igv-view-actions-ZoomInAction.instance"/>
+        </file>
     </folder>
     <folder name="Actions">
         <folder name="File">

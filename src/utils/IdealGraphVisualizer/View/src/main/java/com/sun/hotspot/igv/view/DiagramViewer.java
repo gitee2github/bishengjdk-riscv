@@ -53,6 +53,10 @@ interface DiagramViewer {
 
     public Component getComponent();
 
+    public double getZoomMinFactor();
+
+    public double getZoomMaxFactor();
+
     public void zoomOut();
 
     public void zoomIn();

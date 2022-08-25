@@ -29,21 +29,19 @@ import com.sun.hotspot.igv.data.InputBlock;
 import com.sun.hotspot.igv.data.InputNode;
 import com.sun.hotspot.igv.data.Pair;
 import com.sun.hotspot.igv.data.Properties;
-import com.sun.hotspot.igv.data.services.Scheduler;
 import com.sun.hotspot.igv.graph.*;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalClusterLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalCFGLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.LinearLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalLayoutManager;
 import com.sun.hotspot.igv.layout.LayoutGraph;
-import com.sun.hotspot.igv.layout.Link;
 import com.sun.hotspot.igv.selectioncoordinator.SelectionCoordinator;
 import com.sun.hotspot.igv.util.ColorIcon;
-import com.sun.hotspot.igv.util.CustomSelectAction;
+import com.sun.hotspot.igv.view.actions.CustomSelectAction;
 import com.sun.hotspot.igv.util.DoubleClickAction;
 import com.sun.hotspot.igv.util.PropertiesSheet;
 import com.sun.hotspot.igv.view.actions.CustomizablePanAction;
-import com.sun.hotspot.igv.view.EditorTopComponent;
+import com.sun.hotspot.igv.view.actions.MouseCenteredZoomAction;
 import com.sun.hotspot.igv.view.widgets.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -67,7 +65,6 @@ import org.openide.nodes.Sheet;
 import org.openide.util.Lookup;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
-import org.openide.util.Utilities;
 
 /**
  *
@@ -96,22 +93,20 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     /**
      * The alpha level of partially visible figures.
      */
-    public static final float ALPHA = 0.4f;
+    private static final float ALPHA = 0.4f;
 
     /**
      * The offset of the graph to the border of the window showing it.
      */
-    public static final int BORDER_SIZE = 20;
-
-
-    public static final int UNDOREDO_LIMIT = 100;
-    public static final int SCROLL_UNIT_INCREMENT = 80;
-    public static final int SCROLL_BLOCK_INCREMENT = 400;
-    public static final float ZOOM_MAX_FACTOR = 3.0f;
-    public static final float ZOOM_MIN_FACTOR = 0.0f;//0.15f;
-    public static final float ZOOM_INCREMENT = 1.5f;
-    public static final int SLOT_OFFSET = 8;
-    public static final int ANIMATION_LIMIT = 40;
+    private static final int BORDER_SIZE = 20;
+    private static final int UNDOREDO_LIMIT = 100;
+    private static final int SCROLL_UNIT_INCREMENT = 80;
+    private static final int SCROLL_BLOCK_INCREMENT = 400;
+    private static final double ZOOM_MAX_FACTOR = 3.0d;
+    private static final double ZOOM_MIN_FACTOR = 0.1d;
+    private static final double ZOOM_INCREMENT = 1.1d;
+    private static final int SLOT_OFFSET = 8;
+    private static final int ANIMATION_LIMIT = 40;
 
     private PopupMenuProvider popupMenuProvider = new PopupMenuProvider() {
 
@@ -144,6 +139,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return (T) w;
     }
 
+    public static float getAlpha() {
+        return DiagramScene.ALPHA;
+    }
+
     private static boolean intersects(Set<? extends Object> s1, Set<? extends Object> s2) {
         for (Object o : s1) {
             if (s2.contains(o)) {
@@ -153,23 +152,41 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return false;
     }
 
+    public double getZoomMinFactor() {
+        double zoomToFit = getScrollPane().getHeight() / getBounds().getHeight();
+        double zoomToFitWidth = getScrollPane().getWidth() / getBounds().getWidth();
+        if (zoomToFitWidth < zoomToFit) {
+            zoomToFit = zoomToFitWidth;
+        }
+        zoomToFit *= 0.95;
+        if (zoomToFit < this.ZOOM_MIN_FACTOR) {
+            zoomToFit = this.ZOOM_MIN_FACTOR;
+        } else if (zoomToFit > 1.0) {
+            zoomToFit = 1.0;
+        }
+        return zoomToFit;
+    }
+
+    public double getZoomMaxFactor() {
+        return this.ZOOM_MAX_FACTOR;
+    }
+
     @Override
     public void zoomOut() {
-        double zoom = getZoomFactor();
-        double newZoom = zoom / DiagramScene.ZOOM_INCREMENT;
-        if (newZoom > DiagramScene.ZOOM_MIN_FACTOR) {
-            zoom(newZoom);
+        double newZoom = getZoomFactor() / DiagramScene.ZOOM_INCREMENT;
+        if (newZoom < this.getZoomMinFactor()) {
+            newZoom = this.getZoomMinFactor();
         }
+        zoom(newZoom);
     }
 
     @Override
     public void zoomIn() {
-
-        double zoom = getZoomFactor();
-        double newZoom = zoom * DiagramScene.ZOOM_INCREMENT;
-        if (newZoom < DiagramScene.ZOOM_MAX_FACTOR) {
-            zoom(newZoom);
+        double newZoom = getZoomFactor() * DiagramScene.ZOOM_INCREMENT;
+        if (newZoom > this.getZoomMaxFactor()) {
+            newZoom = this.getZoomMaxFactor();
         }
+        zoom(newZoom);
     }
 
     private void zoom(double newZoom) {
@@ -281,7 +298,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         comp.setOpaque(true);
         this.setBackground(Color.WHITE);
         this.setOpaque(true);
-        JScrollPane result = new JScrollPane(comp);
+        JPanel centeringPanel = new JPanel(new GridBagLayout());
+        centeringPanel.setBackground(Color.WHITE);
+        centeringPanel.setOpaque(true);
+        centeringPanel.add(comp);
+        JScrollPane result = new JScrollPane(centeringPanel);
         result.setBackground(Color.WHITE);
         result.getVerticalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
         result.getVerticalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
@@ -445,10 +466,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         this.addChild(bottomRight);
 
         this.setLayout(LayoutFactory.createAbsoluteLayout());
-        this.getInputBindings().setZoomActionModifiers(Utilities.isMac() ? KeyEvent.META_MASK : KeyEvent.CTRL_MASK);
-        this.getActions().addAction(ActionFactory.createMouseCenteredZoomAction(1.1));
+        this.getActions().addAction(new MouseCenteredZoomAction(1.1, this));
         this.getActions().addAction(ActionFactory.createPopupMenuAction(popupMenuProvider));
-        this.getActions().addAction(ActionFactory.createWheelPanAction());
 
         LayerWidget selectLayer = new LayerWidget(this);
         this.addChild(selectLayer);

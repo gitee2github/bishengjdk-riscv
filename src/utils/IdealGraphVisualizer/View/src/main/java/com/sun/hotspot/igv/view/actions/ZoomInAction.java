@@ -52,8 +52,6 @@ public final class ZoomInAction extends CallableSystemAction {
     }
 
     public ZoomInAction() {
-        // D is the Control key on most platforms, the Command (meta) key on Macintosh
-        putValue(Action.ACCELERATOR_KEY, Utilities.stringToKey("D-EQUALS"));
         putValue(Action.SHORT_DESCRIPTION, "Zoom in");
     }
 

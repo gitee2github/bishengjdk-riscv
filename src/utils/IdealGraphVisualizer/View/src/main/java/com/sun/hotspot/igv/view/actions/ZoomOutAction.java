@@ -48,8 +48,6 @@ public final class ZoomOutAction extends CallableSystemAction {
 
     public ZoomOutAction() {
         putValue(Action.SHORT_DESCRIPTION, "Zoom out");
-        // D is the Control key on most platforms, the Command (meta) key on Macintosh
-        putValue(Action.ACCELERATOR_KEY, Utilities.stringToKey("D-MINUS"));
     }
 
     @Override

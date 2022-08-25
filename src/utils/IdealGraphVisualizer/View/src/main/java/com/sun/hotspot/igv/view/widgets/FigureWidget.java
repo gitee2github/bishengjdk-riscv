@@ -244,7 +244,7 @@ public class FigureWidget extends Widget implements Properties.Provider, PopupMe
         Composite oldComposite = null;
         if (boundary) {
             oldComposite = getScene().getGraphics().getComposite();
-            float alpha = DiagramScene.ALPHA;
+            float alpha = DiagramScene.getAlpha();
             this.getScene().getGraphics().setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
         }
 
