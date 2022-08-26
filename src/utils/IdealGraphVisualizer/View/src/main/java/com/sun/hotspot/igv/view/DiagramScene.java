@@ -266,6 +266,18 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         zoom(DiagramScene.ZOOM_INCREMENT, zoomCenter);
     }
 
+    @Override
+    public void zoomLevel(int percentage) {
+        double zoomFactor = (double)percentage / 100.0d;
+        synchronized (this.getSceneAnimator()) {
+            if (this.zoomAnimator.isRunning()) {
+                this.zoomAnimator.setTargetZoom(zoomFactor);
+            } else {
+                this.zoomAnimator.animateZoomFactor(zoomFactor, null);
+            }
+        }
+    }
+
     private void zoom(double zoomMultiplier, Point zoomCenter) {
         synchronized (this.getSceneAnimator()) {
             if (this.zoomAnimator.isRunning()) {
@@ -287,7 +299,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
                 }
                 this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
             }
-
         }
     }
 

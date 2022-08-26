@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,35 +24,27 @@
 package com.sun.hotspot.igv.view.actions;
 
 import com.sun.hotspot.igv.view.EditorTopComponent;
-import java.awt.Event;
-import java.awt.event.KeyEvent;
 import javax.swing.Action;
-import javax.swing.KeyStroke;
 import org.openide.util.HelpCtx;
 import org.openide.util.actions.CallableSystemAction;
-import org.openide.util.Utilities;
 
-/**
- *
- * @author Thomas Wuerthinger
- */
-public final class ZoomOutAction extends CallableSystemAction {
+public final class ZoomResetAction extends CallableSystemAction {
 
     @Override
     public void performAction() {
         EditorTopComponent editor = EditorTopComponent.getActive();
         if (editor != null) {
-            editor.zoomOut();
+            editor.zoomLevel(100);
         }
-    }
-
-    public ZoomOutAction() {
-        putValue(Action.SHORT_DESCRIPTION, "Zoom out");
     }
 
     @Override
     public String getName() {
-        return "Zoom out";
+        return "Reset zoom (100%)";
+    }
+
+    public ZoomResetAction() {
+        putValue(Action.SHORT_DESCRIPTION, "Reset zoom to 100%");
     }
 
     @Override
@@ -67,6 +59,6 @@ public final class ZoomOutAction extends CallableSystemAction {
 
     @Override
     protected String iconResource() {
-        return "com/sun/hotspot/igv/view/images/zoomOut.svg"; // NOI18N
+        return "com/sun/hotspot/igv/view/images/zoomReset.svg"; // NOI18N
     }
 }

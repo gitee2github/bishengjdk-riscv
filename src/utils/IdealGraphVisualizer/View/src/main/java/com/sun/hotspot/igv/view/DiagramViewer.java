@@ -60,6 +60,8 @@ interface DiagramViewer {
 
     public void zoomIn(Point zoomCenter);
 
+    public void zoomLevel(int percentage);
+
     public UndoRedo getUndoRedo();
 
     public void componentHidden();

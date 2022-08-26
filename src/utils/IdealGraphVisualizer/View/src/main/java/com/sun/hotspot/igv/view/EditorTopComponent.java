@@ -410,6 +410,10 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         scene.zoomIn();
     }
 
+    public void zoomLevel(int percentage) {
+        scene.zoomLevel(percentage);
+    }
+
     public void showPrevDiagram() {
         int fp = getModel().getFirstPosition();
         int sp = getModel().getSecondPosition();
