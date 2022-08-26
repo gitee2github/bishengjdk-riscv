@@ -77,8 +77,8 @@ class CustomZoomAnimator extends Animator {
         super(sceneAnimator);
     }
 
-    public void animateZoomFactor(double zoomFactor, Point mouseLocation) {
-        this.zoomCenter = mouseLocation;
+    public void animateZoomFactor(double zoomFactor, Point zoomCenter) {
+        this.zoomCenter = zoomCenter;
         this.sourceZoom = this.getScene().getZoomFactor();
         this.targetZoom = zoomFactor;
         this.start();
@@ -93,40 +93,18 @@ class CustomZoomAnimator extends Animator {
     }
 
     public void tick(double progress) {
-        if (this.zoomCenter != null) {
-            this.mouseCenteredZoom(progress);
-        } else {
-            this.centeredZoom(progress);
+        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
+        if (this.zoomCenter == null) {
+            this.zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
+            this.zoomCenter = this.getScene().convertViewToScene(this.zoomCenter);
         }
-    }
-
-    private void centeredZoom(double progress) {
-        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
-        Point sceneCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
-        sceneCenter = this.getScene().convertViewToScene(sceneCenter);
-
-        this.getScene().setZoomFactor(progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom));
-        this.getScene().validate();
-
-        Point newViewCenter = this.getScene().convertSceneToView(sceneCenter);
-        Rectangle newVisibleRect = new Rectangle(
-                newViewCenter.x - oldVisibleRect.width / 2,
-                newViewCenter.y - oldVisibleRect.height / 2,
-                oldVisibleRect.width, oldVisibleRect.height);
-        this.getScene().getView().scrollRectToVisible(newVisibleRect);
-
-    }
-
-    public void mouseCenteredZoom(double progress) {
-        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
-        Point sceneCenter = this.zoomCenter;
-        Point oldViewCenter = this.getScene().convertSceneToView(sceneCenter);
+        Point oldViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
 
         double newZoom = progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom);
         this.getScene().setZoomFactor(newZoom);
         this.getScene().validate();
 
-        Point newViewCenter = this.getScene().convertSceneToView(sceneCenter);
+        Point newViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
         Rectangle newVisibleRect = new Rectangle (
                 newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
                 newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
