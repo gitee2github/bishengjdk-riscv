@@ -88,6 +88,10 @@ class CustomZoomAnimator extends Animator {
         return this.targetZoom;
     }
 
+    public void setTargetZoom(double zoomFactor) {
+        this.targetZoom = zoomFactor;
+    }
+
     public void tick(double progress) {
         if (this.zoomCenter != null) {
             this.mouseCenteredZoom(progress);
@@ -264,14 +268,26 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     private void zoom(double zoomMultiplier, Point zoomCenter) {
         synchronized (this.getSceneAnimator()) {
-            double zoomFactor = this.zoomAnimator.isRunning() ? this.zoomAnimator.getTargetZoom() : this.getZoomFactor();
-            zoomFactor *= zoomMultiplier;
-            if (zoomFactor < this.getZoomMinFactor()) {
-                zoomFactor = this.getZoomMinFactor();
-            } else if (zoomFactor > this.getZoomMaxFactor()) {
-                zoomFactor = this.getZoomMaxFactor();
+            if (this.zoomAnimator.isRunning()) {
+                double zoomFactor = this.zoomAnimator.getTargetZoom();
+                zoomFactor *= zoomMultiplier;
+                if (zoomFactor < this.getZoomMinFactor()) {
+                    zoomFactor = this.getZoomMinFactor();
+                } else if (zoomFactor > this.getZoomMaxFactor()) {
+                    zoomFactor = this.getZoomMaxFactor();
+                }
+                this.zoomAnimator.setTargetZoom(zoomFactor);
+            } else {
+                double zoomFactor = this.getZoomFactor();
+                zoomFactor *= zoomMultiplier;
+                if (zoomFactor < this.getZoomMinFactor()) {
+                    zoomFactor = this.getZoomMinFactor();
+                } else if (zoomFactor > this.getZoomMaxFactor()) {
+                    zoomFactor = this.getZoomMaxFactor();
+                }
+                this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
             }
-            this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
+
         }
     }
 
