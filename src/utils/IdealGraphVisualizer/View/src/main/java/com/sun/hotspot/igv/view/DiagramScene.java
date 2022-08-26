@@ -48,6 +48,7 @@ import java.awt.event.*;
 import java.util.List;
 import java.util.*;
 import javax.swing.*;
+import static javax.swing.ScrollPaneConstants.*;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.undo.AbstractUndoableEdit;
 import javax.swing.undo.CannotRedoException;
@@ -77,19 +78,21 @@ class CustomZoomAnimator extends Animator {
         super(sceneAnimator);
     }
 
-    public void animateZoomFactor(double zoomFactor, Point zoomCenter) {
-        this.zoomCenter = zoomCenter;
-        this.sourceZoom = this.getScene().getZoomFactor();
+    public synchronized void animateZoomFactor(double zoomFactor, Point zoomCenter) {
         this.targetZoom = zoomFactor;
-        this.start();
+        if (!this.isRunning()) {
+            this.zoomCenter = zoomCenter;
+            this.sourceZoom = this.getScene().getZoomFactor();
+            this.start();
+        }
     }
 
-    public double getTargetZoom() {
-        return this.targetZoom;
-    }
-
-    public void setTargetZoom(double zoomFactor) {
-        this.targetZoom = zoomFactor;
+    public synchronized double getTargetZoom() {
+        if (this.isRunning()) {
+            return this.targetZoom;
+        } else {
+            return this.getScene().getZoomFactor();
+        }
     }
 
     public void tick(double progress) {
@@ -205,7 +208,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return false;
     }
 
-    public double getZoomMinFactor() {
+    private double getZoomMinFactor() {
         double zoomToFit = getScrollPane().getHeight() / getBounds().getHeight();
         double zoomToFitWidth = getScrollPane().getWidth() / getBounds().getWidth();
         if (zoomToFitWidth < zoomToFit) {
@@ -220,64 +223,70 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return zoomToFit;
     }
 
-    public double getZoomMaxFactor() {
+    private double getZoomMaxFactor() {
         return this.ZOOM_MAX_FACTOR;
     }
 
     @Override
     public void zoomOut() {
-        zoomOut(null);
+        zoom(1.0 / ZOOM_INCREMENT);
     }
 
     @Override
     public void zoomOut(Point zoomCenter) {
-        zoom(1.0 / DiagramScene.ZOOM_INCREMENT, zoomCenter);
+        animatedZoom(1.0 / ZOOM_INCREMENT, zoomCenter);
     }
 
     @Override
     public void zoomIn() {
-        zoomIn(null);
+        zoom(ZOOM_INCREMENT);
     }
 
     @Override
     public void zoomIn(Point zoomCenter) {
-        zoom(DiagramScene.ZOOM_INCREMENT, zoomCenter);
+        animatedZoom(ZOOM_INCREMENT, zoomCenter);
     }
 
     @Override
     public void zoomLevel(int percentage) {
-        double zoomFactor = (double)percentage / 100.0d;
-        synchronized (this.getSceneAnimator()) {
-            if (this.zoomAnimator.isRunning()) {
-                this.zoomAnimator.setTargetZoom(zoomFactor);
-            } else {
-                this.zoomAnimator.animateZoomFactor(zoomFactor, null);
-            }
-        }
+        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0d, null);
     }
 
-    private void zoom(double zoomMultiplier, Point zoomCenter) {
-        synchronized (this.getSceneAnimator()) {
-            if (this.zoomAnimator.isRunning()) {
-                double zoomFactor = this.zoomAnimator.getTargetZoom();
-                zoomFactor *= zoomMultiplier;
-                if (zoomFactor < this.getZoomMinFactor()) {
-                    zoomFactor = this.getZoomMinFactor();
-                } else if (zoomFactor > this.getZoomMaxFactor()) {
-                    zoomFactor = this.getZoomMaxFactor();
-                }
-                this.zoomAnimator.setTargetZoom(zoomFactor);
-            } else {
-                double zoomFactor = this.getZoomFactor();
-                zoomFactor *= zoomMultiplier;
-                if (zoomFactor < this.getZoomMinFactor()) {
-                    zoomFactor = this.getZoomMinFactor();
-                } else if (zoomFactor > this.getZoomMaxFactor()) {
-                    zoomFactor = this.getZoomMaxFactor();
-                }
-                this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
-            }
+    private void zoom(double zoomMultiplier) {
+        double zoomFactor = this.getZoomFactor() * zoomMultiplier;
+        if (zoomFactor < this.getZoomMinFactor()) {
+            zoomFactor = this.getZoomMinFactor();
+        } else if (zoomFactor > this.getZoomMaxFactor()) {
+            zoomFactor = this.getZoomMaxFactor();
         }
+
+
+        Rectangle oldVisibleRect = this.getView().getVisibleRect();
+        Point zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
+        zoomCenter = this.convertViewToScene(zoomCenter);
+        Point oldViewCenter = this.convertSceneToView(zoomCenter);
+
+        this.setZoomFactor(zoomFactor);
+        this.validate();
+
+        Point newViewCenter = this.convertSceneToView(zoomCenter);
+        Rectangle newVisibleRect = new Rectangle (
+                newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
+                newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
+                oldVisibleRect.width,
+                oldVisibleRect.height
+        );
+        this.getView().scrollRectToVisible(newVisibleRect);
+    }
+
+    private void animatedZoom(double zoomMultiplier, Point zoomCenter) {
+        double zoomFactor = this.zoomAnimator.getTargetZoom() * zoomMultiplier;
+        if (zoomFactor < this.getZoomMinFactor()) {
+            zoomFactor = this.getZoomMinFactor();
+        } else if (zoomFactor > this.getZoomMaxFactor()) {
+            zoomFactor = this.getZoomMaxFactor();
+        }
+        this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
     }
 
     @Override
@@ -383,7 +392,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         centeringPanel.setBackground(Color.WHITE);
         centeringPanel.setOpaque(true);
         centeringPanel.add(viewComponent);
-        JScrollPane scrollPane = new JScrollPane(centeringPanel);
+        JScrollPane scrollPane = new JScrollPane(centeringPanel,  VERTICAL_SCROLLBAR_ALWAYS, HORIZONTAL_SCROLLBAR_ALWAYS);
         scrollPane.setBackground(Color.WHITE);
         scrollPane.getVerticalScrollBar().setUnitIncrement(SCROLL_UNIT_INCREMENT);
         scrollPane.getVerticalScrollBar().setBlockIncrement(SCROLL_BLOCK_INCREMENT);
@@ -404,7 +413,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
                 if ((event.getModifiers() & modifiers) != modifiers) {
                     return;
                 }
-                double zoom = DiagramScene.this.getZoomFactor();
+                double zoom = DiagramScene.this.zoomAnimator.getTargetZoom();
                 int n = event.getWheelRotation();
                 if (n > 0) {
                     DiagramScene.this.zoomOut();
