@@ -24,19 +24,17 @@
 package com.sun.hotspot.igv.view.actions;
 
 import com.sun.hotspot.igv.view.DiagramScene;
-import org.netbeans.api.visual.action.ActionFactory;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.KeyEvent;
+import javax.swing.JComponent;
 import org.netbeans.api.visual.action.WidgetAction;
-import org.netbeans.api.visual.widget.Scene;
 import org.netbeans.api.visual.widget.Widget;
 import org.openide.util.Utilities;
-
-import java.awt.*;
-import java.awt.event.KeyEvent;
 
 
 public class MouseCenteredZoomAction extends WidgetAction.Adapter {
 
-    private static WidgetAction wheelPanAction = ActionFactory.createWheelPanAction();
     private static int modifiers = Utilities.isMac() ? KeyEvent.META_MASK : KeyEvent.CTRL_MASK;
     private DiagramScene scene;
 
@@ -46,10 +44,23 @@ public class MouseCenteredZoomAction extends WidgetAction.Adapter {
 
     @Override
     public State mouseWheelMoved(Widget widget, WidgetMouseWheelEvent event) {
-        Scene scene = widget.getScene();
         if ((event.getModifiers() & modifiers) != modifiers) {
             // If modifier key is not pressed, use wheel for panning
-            return wheelPanAction.mouseWheelMoved(widget, event);
+            JComponent view = this.scene.getView();
+            Rectangle visibleRect = view.getVisibleRect();
+            int amount = event.getWheelRotation() * 64;
+            switch (event.getModifiers() & 11) {
+                case 0:
+                    visibleRect.y += amount;
+                    break;
+                case 1:
+                    visibleRect.x += amount;
+                    break;
+                default:
+                    return State.REJECTED;
+            }
+            view.scrollRectToVisible(visibleRect);
+            return State.CONSUMED;
         }
 
         Point mouseLocation = widget.convertLocalToScene(event.getPoint());

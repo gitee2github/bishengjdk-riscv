@@ -23,23 +23,19 @@
  */
 package com.sun.hotspot.igv.view;
 
-import com.sun.hotspot.igv.data.ChangedListener;
-import com.sun.hotspot.igv.data.ControllableChangedListener;
-import com.sun.hotspot.igv.data.InputBlock;
-import com.sun.hotspot.igv.data.InputNode;
-import com.sun.hotspot.igv.data.Pair;
 import com.sun.hotspot.igv.data.Properties;
+import com.sun.hotspot.igv.data.*;
 import com.sun.hotspot.igv.graph.*;
-import com.sun.hotspot.igv.hierarchicallayout.HierarchicalClusterLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalCFGLayoutManager;
-import com.sun.hotspot.igv.hierarchicallayout.LinearLayoutManager;
+import com.sun.hotspot.igv.hierarchicallayout.HierarchicalClusterLayoutManager;
 import com.sun.hotspot.igv.hierarchicallayout.HierarchicalLayoutManager;
+import com.sun.hotspot.igv.hierarchicallayout.LinearLayoutManager;
 import com.sun.hotspot.igv.layout.LayoutGraph;
 import com.sun.hotspot.igv.selectioncoordinator.SelectionCoordinator;
 import com.sun.hotspot.igv.util.ColorIcon;
-import com.sun.hotspot.igv.view.actions.CustomSelectAction;
 import com.sun.hotspot.igv.util.DoubleClickAction;
 import com.sun.hotspot.igv.util.PropertiesSheet;
+import com.sun.hotspot.igv.view.actions.CustomSelectAction;
 import com.sun.hotspot.igv.view.actions.CustomizablePanAction;
 import com.sun.hotspot.igv.view.actions.MouseCenteredZoomAction;
 import com.sun.hotspot.igv.view.widgets.*;
@@ -48,13 +44,13 @@ import java.awt.event.*;
 import java.util.List;
 import java.util.*;
 import javax.swing.*;
-import static javax.swing.ScrollPaneConstants.*;
+import static javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS;
+import static javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.undo.AbstractUndoableEdit;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import org.netbeans.api.visual.action.*;
-import org.netbeans.api.visual.animator.Animator;
 import org.netbeans.api.visual.animator.SceneAnimator;
 import org.netbeans.api.visual.layout.LayoutFactory;
 import org.netbeans.api.visual.model.*;
@@ -68,56 +64,6 @@ import org.openide.util.Lookup;
 import org.openide.util.Utilities;
 import org.openide.util.lookup.AbstractLookup;
 import org.openide.util.lookup.InstanceContent;
-
-class CustomZoomAnimator extends Animator {
-    private volatile double sourceZoom;
-    private volatile double targetZoom;
-    private volatile Point zoomCenter;
-
-    public CustomZoomAnimator(SceneAnimator sceneAnimator) {
-        super(sceneAnimator);
-    }
-
-    public synchronized void animateZoomFactor(double zoomFactor, Point zoomCenter) {
-        this.targetZoom = zoomFactor;
-        if (!this.isRunning()) {
-            this.zoomCenter = zoomCenter;
-            this.sourceZoom = this.getScene().getZoomFactor();
-            this.start();
-        }
-    }
-
-    public synchronized double getTargetZoom() {
-        if (this.isRunning()) {
-            return this.targetZoom;
-        } else {
-            return this.getScene().getZoomFactor();
-        }
-    }
-
-    public void tick(double progress) {
-        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
-        if (this.zoomCenter == null) {
-            this.zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
-            this.zoomCenter = this.getScene().convertViewToScene(this.zoomCenter);
-        }
-        Point oldViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
-
-        double newZoom = progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom);
-        this.getScene().setZoomFactor(newZoom);
-        this.getScene().validate();
-
-        Point newViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
-        Rectangle newVisibleRect = new Rectangle (
-                newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
-                newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
-                oldVisibleRect.width,
-                oldVisibleRect.height
-        );
-        this.getScene().getView().scrollRectToVisible(newVisibleRect);
-    }
-}
-
 
 /**
  *
@@ -257,7 +203,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         } else if (zoomFactor > this.getZoomMaxFactor()) {
             zoomFactor = this.getZoomMaxFactor();
         }
-
 
         Rectangle oldVisibleRect = this.getView().getVisibleRect();
         Point zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
@@ -409,6 +354,21 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             @Override
             public void mouseWheelMoved(MouseWheelEvent event) {
                 if ((event.getModifiers() & modifiers) != modifiers) {
+                    // If modifier key is not pressed, use wheel for panning
+                    JComponent view = DiagramScene.this.getView();
+                    Rectangle visibleRect = view.getVisibleRect();
+                    int amount = event.getWheelRotation() * 64;
+                    switch (event.getModifiers() & 11) {
+                        case 0:
+                            visibleRect.y += amount;
+                            break;
+                        case 1:
+                            visibleRect.x += amount;
+                            break;
+                        default:
+                            return;
+                    }
+                    view.scrollRectToVisible(visibleRect);
                     return;
                 }
                 double zoom = DiagramScene.this.zoomAnimator.getTargetZoom();
@@ -570,7 +530,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         mainLayer = new LayerWidget(this);
         this.addChild(mainLayer);
 
-        this.setBorder(BorderFactory.createEmptyBorder(BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE));
+        this.setBorder(BorderFactory.createLineBorder(Color.white, BORDER_SIZE));
         this.setLayout(LayoutFactory.createAbsoluteLayout());
         this.getActions().addAction(new MouseCenteredZoomAction(this));
         this.getActions().addAction(ActionFactory.createPopupMenuAction(popupMenuProvider));
