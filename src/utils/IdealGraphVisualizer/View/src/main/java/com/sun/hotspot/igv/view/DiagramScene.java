@@ -137,8 +137,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private UndoRedo.Manager undoRedoManager;
     private LayerWidget mainLayer;
     private LayerWidget blockLayer;
-    private Widget topLeft;
-    private Widget bottomRight;
     private DiagramViewModel model;
     private DiagramViewModel modelCopy;
     private boolean rebuilding;
@@ -572,14 +570,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         mainLayer = new LayerWidget(this);
         this.addChild(mainLayer);
 
-        topLeft = new Widget(this);
-        topLeft.setPreferredLocation(new Point(-BORDER_SIZE, -BORDER_SIZE));
-        this.addChild(topLeft);
-
-        bottomRight = new Widget(this);
-        bottomRight.setPreferredLocation(new Point(-BORDER_SIZE, -BORDER_SIZE));
-        this.addChild(bottomRight);
-
+        this.setBorder(BorderFactory.createEmptyBorder(BORDER_SIZE, BORDER_SIZE, BORDER_SIZE, BORDER_SIZE));
         this.setLayout(LayoutFactory.createAbsoluteLayout());
         this.getActions().addAction(new MouseCenteredZoomAction(this));
         this.getActions().addAction(ActionFactory.createPopupMenuAction(popupMenuProvider));
@@ -871,63 +862,6 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
         Diagram diagram = getModel().getDiagramToView();
 
-        int maxX = -BORDER_SIZE;
-        int maxY = -BORDER_SIZE;
-        for (Figure f : diagram.getFigures()) {
-            FigureWidget w = getWidget(f);
-            if (w.isVisible()) {
-                Point p = f.getPosition();
-                Dimension d = f.getSize();
-                maxX = Math.max(maxX, p.x + d.width);
-                maxY = Math.max(maxY, p.y + d.height);
-            }
-        }
-
-        for (FigureConnection c : diagram.getConnections()) {
-            List<Point> points = c.getControlPoints();
-            FigureWidget w1 = getWidget((Figure) c.getTo().getVertex());
-            FigureWidget w2 = getWidget((Figure) c.getFrom().getVertex());
-            if (w1.isVisible() && w2.isVisible()) {
-                for (Point p : points) {
-                    if (p != null) {
-                        maxX = Math.max(maxX, p.x);
-                        maxY = Math.max(maxY, p.y);
-                    }
-                }
-            }
-        }
-
-        if (getModel().getShowBlocks() || getModel().getShowCFG()) {
-            for (Block b : diagram.getBlocks()) {
-                BlockWidget w = getWidget(b.getInputBlock());
-                if (w != null && w.isVisible()) {
-                    Rectangle r = b.getBounds();
-                    maxX = Math.max(maxX, r.x + r.width);
-                    maxY = Math.max(maxY, r.y + r.height);
-                }
-            }
-        }
-
-        bottomRight.setPreferredLocation(new Point(maxX + BORDER_SIZE, maxY + BORDER_SIZE));
-        int offx = 0;
-        int offy = 0;
-        int curWidth = maxX + 2 * BORDER_SIZE;
-        int curHeight = maxY + 2 * BORDER_SIZE;
-
-        Rectangle bounds = this.getScrollPane().getBounds();
-        bounds.width /= getZoomFactor();
-        bounds.height /= getZoomFactor();
-        if (curWidth < bounds.width) {
-            offx = (bounds.width - curWidth) / 2;
-        }
-
-        if (curHeight < bounds.height) {
-            offy = (bounds.height - curHeight) / 2;
-        }
-
-        final int offx2 = offx;
-        final int offy2 = offy;
-
         SceneAnimator animator = this.getSceneAnimator();
         connectionLayer.removeChildren();
         int visibleFigureCount = 0;
@@ -950,14 +884,14 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
                 for (FigureConnection c : s.getConnections()) {
                     cl.add((Connection) c);
                 }
-                processOutputSlot(lastLineCache, s, cl, 0, null, null, offx2, offy2, anim);
+                processOutputSlot(lastLineCache, s, cl, 0, null, null, 0, 0, anim);
             }
         }
 
         if (getModel().getShowCFG()) {
             for (BlockConnection c : diagram.getBlockConnections()) {
                 if (isVisible(c)) {
-                    processOutputSlot(lastLineCache, null, Collections.singletonList(c), 0, null, null, offx2, offy2, animator);
+                    processOutputSlot(lastLineCache, null, Collections.singletonList(c), 0, null, null, 0, 0, animator);
                 }
             }
         }
@@ -966,7 +900,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             FigureWidget w = getWidget(f);
             if (w.isVisible()) {
                 Point p = f.getPosition();
-                Point p2 = new Point(p.x + offx2, p.y + offy2);
+                Point p2 = new Point(p.x, p.y);
                 if ((visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w))) {
                     animator.animatePreferredLocation(w, p2);
                 } else {
@@ -980,7 +914,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
             for (Block b : diagram.getBlocks()) {
                 BlockWidget w = getWidget(b.getInputBlock());
                 if (w != null && w.isVisible()) {
-                    Point location = new Point(b.getBounds().x + offx2, b.getBounds().y + offy2);
+                    Point location = new Point(b.getBounds().x, b.getBounds().y);
                     Rectangle r = new Rectangle(location.x, location.y, b.getBounds().width, b.getBounds().height);
 
                     if ((visibleFigureCount <= ANIMATION_LIMIT && oldVisibleWidgets != null && oldVisibleWidgets.contains(w))) {
