@@ -102,9 +102,9 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private static final int UNDOREDO_LIMIT = 100;
     private static final int SCROLL_UNIT_INCREMENT = 80;
     private static final int SCROLL_BLOCK_INCREMENT = 400;
-    private static final double ZOOM_MAX_FACTOR = 4.0d;
-    private static final double ZOOM_MIN_FACTOR = 0.1d;
-    private static final double ZOOM_INCREMENT = 1.2d;
+    private static final double ZOOM_MAX_FACTOR = 4.0;
+    private static final double ZOOM_MIN_FACTOR = 0.1;
+    private static final double ZOOM_INCREMENT = 1.2;
     private static final int SLOT_OFFSET = 8;
     private static final int ANIMATION_LIMIT = 40;
 
@@ -152,18 +152,16 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return false;
     }
 
+    private double getZoomToFitFactor() {
+        double factorWidth = getScrollPane().getViewport().getViewRect().getWidth() / getBounds().getWidth() ;
+        double factorHeight = getScrollPane().getViewport().getViewRect().getHeight() / getBounds().getHeight();
+        return Math.min(factorWidth, factorHeight);
+    }
+
     private double getZoomMinFactor() {
-        double zoomToFit = getScrollPane().getHeight() / getBounds().getHeight();
-        double zoomToFitWidth = getScrollPane().getWidth() / getBounds().getWidth();
-        if (zoomToFitWidth < zoomToFit) {
-            zoomToFit = zoomToFitWidth;
-        }
-        zoomToFit *= 0.95;
-        if (zoomToFit < this.ZOOM_MIN_FACTOR) {
-            zoomToFit = this.ZOOM_MIN_FACTOR;
-        } else if (zoomToFit > 1.0) {
-            zoomToFit = 1.0;
-        }
+        double zoomToFit = 0.98 * this.getZoomToFitFactor();
+        zoomToFit = Math.max(zoomToFit, this.ZOOM_MIN_FACTOR);
+        zoomToFit = Math.min(zoomToFit, 1.0);
         return zoomToFit;
     }
 
@@ -193,22 +191,18 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void zoomLevel(int percentage) {
-        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0d, null);
+        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, null);
     }
 
     private void zoom(double zoomMultiplier) {
-        double zoomFactor = this.getZoomFactor() * zoomMultiplier;
-        if (zoomFactor < this.getZoomMinFactor()) {
-            zoomFactor = this.getZoomMinFactor();
-        } else if (zoomFactor > this.getZoomMaxFactor()) {
-            zoomFactor = this.getZoomMaxFactor();
-        }
-
         Rectangle oldVisibleRect = this.getView().getVisibleRect();
         Point zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
         zoomCenter = this.convertViewToScene(zoomCenter);
         Point oldViewCenter = this.convertSceneToView(zoomCenter);
 
+        double zoomFactor = this.getZoomFactor() * zoomMultiplier;
+        zoomFactor = Math.max(zoomFactor, this.getZoomMinFactor());
+        zoomFactor = Math.min(zoomFactor,  this.getZoomMaxFactor());
         this.setZoomFactor(zoomFactor);
         this.validate();
 
@@ -224,17 +218,13 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     private void animatedZoom(double zoomMultiplier, Point zoomCenter) {
         double zoomFactor = this.zoomAnimator.getTargetZoom() * zoomMultiplier;
-        if (zoomFactor < this.getZoomMinFactor()) {
-            zoomFactor = this.getZoomMinFactor();
-        } else if (zoomFactor > this.getZoomMaxFactor()) {
-            zoomFactor = this.getZoomMaxFactor();
-        }
+        zoomFactor = Math.max(zoomFactor, this.getZoomMinFactor());
+        zoomFactor = Math.min(zoomFactor,  this.getZoomMaxFactor());
         this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
     }
 
     @Override
     public void centerFigures(List<Figure> list) {
-
         boolean b = getUndoRedoEnabled();
         setUndoRedoEnabled(false);
         gotoFigures(list);
@@ -1088,44 +1078,27 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         setSelectedObjects(objects);
     }
 
-    private Point calcCenter(Rectangle r) {
+    private void centerRectangle(Rectangle rect) {
+        Rectangle oldViewRect = this.convertSceneToView(rect);
+        // calculate the center
+        Point zoomCenter = new Point(oldViewRect.width / 2, oldViewRect.height / 2);
+        Point oldViewCenter = this.convertSceneToView(zoomCenter);
 
-        Point center = new Point((int) r.getCenterX(), (int) r.getCenterY());
-        center.x -= getScrollPane().getViewport().getViewRect().width / 2;
-        center.y -= getScrollPane().getViewport().getViewRect().height / 2;
-
-        // Ensure to be within area
-        center.x = Math.max(0, center.x);
-        center.x = Math.min(getScrollPane().getViewport().getViewSize().width - getScrollPane().getViewport().getViewRect().width, center.x);
-        center.y = Math.max(0, center.y);
-        center.y = Math.min(getScrollPane().getViewport().getViewSize().height - getScrollPane().getViewport().getViewRect().height, center.y);
-
-        return center;
-    }
-
-    private void centerRectangle(Rectangle r) {
-
-        if (getScrollPane().getViewport().getViewRect().width == 0 || getScrollPane().getViewport().getViewRect().height == 0) {
-            return;
+        double factorWidth = getScrollPane().getViewport().getViewRect().getWidth() / oldViewRect.getWidth() ;
+        double factorHeight = getScrollPane().getViewport().getViewRect().getHeight() / oldViewRect.getHeight();
+        double zoomFactor = Math.min(factorWidth, factorHeight);
+        if (zoomFactor < 1.0) {
+            this.setZoomFactor(getZoomFactor() * zoomFactor);
+            this.validate();
         }
-
-        Rectangle r2 = new Rectangle(r.x, r.y, r.width, r.height);
-        r2 = convertSceneToView(r2);
-
-        double factorX = (double) r2.width / (double) getScrollPane().getViewport().getViewRect().width;
-        double factorY = (double) r2.height / (double) getScrollPane().getViewport().getViewRect().height;
-        double factor = Math.max(factorX, factorY);
-        if (factor >= 1.0) {
-            Point p = getScrollPane().getViewport().getViewPosition();
-            setZoomFactor(getZoomFactor() / factor);
-            r2.x /= factor;
-            r2.y /= factor;
-            r2.width /= factor;
-            r2.height /= factor;
-            getScrollPane().getViewport().setViewPosition(calcCenter(r2));
-        } else {
-            getScrollPane().getViewport().setViewPosition(calcCenter(r2));
-        }
+        Point newViewCenter = this.convertSceneToView(zoomCenter);
+        Rectangle newVisibleRect = new Rectangle (
+                newViewCenter.x - (oldViewCenter.x - oldViewRect.x),
+                newViewCenter.y - (oldViewCenter.y - oldViewRect.y),
+                oldViewRect.width,
+                oldViewRect.height
+        );
+        this.getView().scrollRectToVisible(newVisibleRect);
     }
 
     @Override
