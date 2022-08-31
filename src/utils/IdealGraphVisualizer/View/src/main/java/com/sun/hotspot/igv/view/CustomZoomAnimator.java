@@ -23,8 +23,10 @@
  */
 package com.sun.hotspot.igv.view;
 
+import java.awt.EventQueue;
 import java.awt.Point;
 import java.awt.Rectangle;
+import javax.swing.JViewport;
 import org.netbeans.api.visual.animator.Animator;
 import org.netbeans.api.visual.animator.SceneAnimator;
 
@@ -32,6 +34,8 @@ public class CustomZoomAnimator extends Animator {
     private volatile double sourceZoom;
     private volatile double targetZoom;
     private volatile Point zoomCenter;
+    private volatile double oldZoom;
+    private volatile Rectangle visibleRect;
 
     public CustomZoomAnimator(SceneAnimator sceneAnimator) {
         super(sceneAnimator);
@@ -49,6 +53,8 @@ public class CustomZoomAnimator extends Animator {
             this.targetZoom = zoomFactor;
             this.zoomCenter = zoomCenter;
             this.sourceZoom = this.getScene().getZoomFactor();
+            this.oldZoom = this.sourceZoom;
+            this.visibleRect = this.getScene().getView().getVisibleRect();
             this.start();
         }
     }
@@ -61,21 +67,24 @@ public class CustomZoomAnimator extends Animator {
         }
     }
 
-    public void tick(double progress) {
-        Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
-        Point oldViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
-
+    private synchronized void do_tick(double progress) {
         double newZoom = progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom);
         this.getScene().setZoomFactor(newZoom);
         this.getScene().validate();
 
-        Point newViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
-        Rectangle newVisibleRect = new Rectangle (
-                newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
-                newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
-                oldVisibleRect.width,
-                oldVisibleRect.height
-        );
-        this.getScene().getView().scrollRectToVisible(newVisibleRect);
+        Point location = this.getScene().getLocation();
+        visibleRect.x += (int)(newZoom * (double)(location.x + this.zoomCenter.x)) - (int)(this.oldZoom * (double)(location.x + this.zoomCenter.x));
+        visibleRect.y += (int)(newZoom * (double)(location.y + this.zoomCenter.y)) - (int)(this.oldZoom * (double)(location.y + this.zoomCenter.y));
+
+        // Ensure to be within area
+        visibleRect.x = Math.max(0, visibleRect.x);
+        visibleRect.y = Math.max(0, visibleRect.y);
+
+        this.getScene().getView().scrollRectToVisible(visibleRect);
+        this.oldZoom = newZoom;
+    }
+
+    public void tick(double progress) {
+        EventQueue.invokeLater(()->this.do_tick(progress));
     }
 }

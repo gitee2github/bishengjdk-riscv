@@ -104,7 +104,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private static final int SCROLL_BLOCK_INCREMENT = 400;
     private static final double ZOOM_MAX_FACTOR = 4.0;
     private static final double ZOOM_MIN_FACTOR = 0.1;
-    private static final double ZOOM_INCREMENT = 1.2;
+    private static final double ZOOM_INCREMENT = 1.3;
     private static final int SLOT_OFFSET = 8;
     private static final int ANIMATION_LIMIT = 40;
 
@@ -191,32 +191,28 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void zoomLevel(int percentage) {
-        Rectangle visibleRect = this.getScene().getView().getVisibleRect();
+        Rectangle visibleRect = this.getView().getVisibleRect();
         Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
-        zoomCenter = this.getScene().convertViewToScene(zoomCenter);
+        zoomCenter = this.convertViewToScene(zoomCenter);
         this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, zoomCenter);
     }
 
     private void zoom(double zoomMultiplier) {
-        Rectangle oldVisibleRect = this.getView().getVisibleRect();
-        Point zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
-        zoomCenter = this.convertViewToScene(zoomCenter);
-        Point oldViewCenter = this.convertSceneToView(zoomCenter);
+        Rectangle visibleRect = this.getView().getVisibleRect();
 
-        double zoomFactor = this.getZoomFactor() * zoomMultiplier;
-        zoomFactor = Math.max(zoomFactor, this.getZoomMinFactor());
-        zoomFactor = Math.min(zoomFactor,  this.getZoomMaxFactor());
-        this.setZoomFactor(zoomFactor);
+        double oldZoom = this.getZoomFactor();
+        double newZoom = oldZoom * zoomMultiplier;
+        newZoom = Math.max(newZoom, this.getZoomMinFactor());
+        newZoom = Math.min(newZoom,  this.getZoomMaxFactor());
+        this.setZoomFactor(newZoom);
         this.validate();
 
-        Point newViewCenter = this.convertSceneToView(zoomCenter);
-        Rectangle newVisibleRect = new Rectangle (
-                newViewCenter.x - (oldViewCenter.x - oldVisibleRect.x),
-                newViewCenter.y - (oldViewCenter.y - oldVisibleRect.y),
-                oldVisibleRect.width,
-                oldVisibleRect.height
-        );
-        this.getView().scrollRectToVisible(newVisibleRect);
+        Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
+        visibleRect.x += (int)(newZoom / oldZoom * (double)zoomCenter.x) - zoomCenter.x;
+        visibleRect.y += (int)(newZoom / oldZoom * (double)zoomCenter.y) - zoomCenter.y;
+
+        this.getView().scrollRectToVisible(visibleRect);
+        this.validate();
     }
 
     private void animatedZoom(double zoomMultiplier, Point zoomCenter) {
