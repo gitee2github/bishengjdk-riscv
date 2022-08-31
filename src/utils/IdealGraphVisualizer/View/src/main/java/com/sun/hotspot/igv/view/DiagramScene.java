@@ -104,7 +104,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private static final int SCROLL_BLOCK_INCREMENT = 400;
     private static final double ZOOM_MAX_FACTOR = 4.0;
     private static final double ZOOM_MIN_FACTOR = 0.1;
-    private static final double ZOOM_INCREMENT = 1.3;
+    private static final double ZOOM_INCREMENT = 1.2;
     private static final int SLOT_OFFSET = 8;
     private static final int ANIMATION_LIMIT = 40;
 
@@ -191,7 +191,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void zoomLevel(int percentage) {
-        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, null);
+        Rectangle visibleRect = this.getScene().getView().getVisibleRect();
+        Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
+        zoomCenter = this.getScene().convertViewToScene(zoomCenter);
+        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, zoomCenter);
     }
 
     private void zoom(double zoomMultiplier) {

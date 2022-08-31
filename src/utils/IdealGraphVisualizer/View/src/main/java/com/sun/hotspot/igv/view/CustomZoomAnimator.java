@@ -38,8 +38,15 @@ public class CustomZoomAnimator extends Animator {
     }
 
     public synchronized void animateZoomFactor(double zoomFactor, Point zoomCenter) {
-        this.targetZoom = zoomFactor;
-        if (!this.isRunning()) {
+        assert zoomCenter != null;
+        if (this.isRunning()) {
+            if (this.sourceZoom < this.targetZoom && this.targetZoom < zoomFactor) {
+                this.targetZoom = zoomFactor;
+            } else if (this.sourceZoom > this.targetZoom && this.targetZoom > zoomFactor) {
+                this.targetZoom = zoomFactor;
+            }
+        } else {
+            this.targetZoom = zoomFactor;
             this.zoomCenter = zoomCenter;
             this.sourceZoom = this.getScene().getZoomFactor();
             this.start();
@@ -56,10 +63,6 @@ public class CustomZoomAnimator extends Animator {
 
     public void tick(double progress) {
         Rectangle oldVisibleRect = this.getScene().getView().getVisibleRect();
-        if (this.zoomCenter == null) {
-            this.zoomCenter = new Point(oldVisibleRect.x + oldVisibleRect.width / 2, oldVisibleRect.y + oldVisibleRect.height / 2);
-            this.zoomCenter = this.getScene().convertViewToScene(this.zoomCenter);
-        }
         Point oldViewCenter = this.getScene().convertSceneToView(this.zoomCenter);
 
         double newZoom = progress >= 1.0 ? this.targetZoom : this.sourceZoom + progress * (this.targetZoom - this.sourceZoom);
