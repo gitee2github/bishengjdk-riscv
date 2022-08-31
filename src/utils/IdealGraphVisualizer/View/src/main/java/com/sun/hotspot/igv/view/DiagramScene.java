@@ -1078,27 +1078,29 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         setSelectedObjects(objects);
     }
 
-    private void centerRectangle(Rectangle rect) {
-        Rectangle oldViewRect = this.convertSceneToView(rect);
-        // calculate the center
-        Point zoomCenter = new Point(oldViewRect.width / 2, oldViewRect.height / 2);
-        Point oldViewCenter = this.convertSceneToView(zoomCenter);
+    private void centerRectangle(Rectangle r) {
+        Rectangle rect = convertSceneToView(r);
+        Rectangle viewRect = getScrollPane().getViewport().getViewRect();
 
-        double factorWidth = getScrollPane().getViewport().getViewRect().getWidth() / oldViewRect.getWidth() ;
-        double factorHeight = getScrollPane().getViewport().getViewRect().getHeight() / oldViewRect.getHeight();
-        double zoomFactor = Math.min(factorWidth, factorHeight);
-        if (zoomFactor < 1.0) {
-            this.setZoomFactor(getZoomFactor() * zoomFactor);
-            this.validate();
+        double factor = Math.min(viewRect.getWidth() / rect.getWidth(),  viewRect.getHeight() / rect.getHeight());
+        if (factor < 1.0) {
+            setZoomFactor(getZoomFactor() * factor);
+            rect.x *= factor;
+            rect.y *= factor;
+            rect.width *= factor;
+            rect.height *= factor;
         }
-        Point newViewCenter = this.convertSceneToView(zoomCenter);
-        Rectangle newVisibleRect = new Rectangle (
-                newViewCenter.x - (oldViewCenter.x - oldViewRect.x),
-                newViewCenter.y - (oldViewCenter.y - oldViewRect.y),
-                oldViewRect.width,
-                oldViewRect.height
-        );
-        this.getView().scrollRectToVisible(newVisibleRect);
+
+        viewRect.x = rect.x + rect.width / 2 - viewRect.width / 2;
+        viewRect.y = rect.y + rect.height / 2 - viewRect.height / 2;
+
+        // Ensure to be within area
+        viewRect.x = Math.max(0, viewRect.x);
+        viewRect.x = Math.min(getScrollPane().getViewport().getViewSize().width - viewRect.width, viewRect.x);
+        viewRect.y = Math.max(0, viewRect.y);
+        viewRect.y = Math.min(getScrollPane().getViewport().getViewSize().height - viewRect.height, viewRect.y);
+
+        this.getView().scrollRectToVisible(viewRect);
     }
 
     @Override
