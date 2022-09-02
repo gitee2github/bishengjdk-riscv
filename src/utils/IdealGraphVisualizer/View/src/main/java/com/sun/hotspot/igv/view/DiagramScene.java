@@ -360,12 +360,16 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
                     view.scrollRectToVisible(visibleRect);
                     return;
                 }
-                double zoom = DiagramScene.this.zoomAnimator.getTargetZoom();
+
+                Rectangle visibleRect = DiagramScene.this.getView().getVisibleRect();
+                Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
+                zoomCenter = DiagramScene.this.convertViewToScene(zoomCenter);
+
                 int n = event.getWheelRotation();
                 if (n > 0) {
-                    DiagramScene.this.zoomOut();
+                    DiagramScene.this.zoomOut(zoomCenter);
                 } else if (n < 0) {
-                    DiagramScene.this.zoomIn();
+                    DiagramScene.this.zoomIn(zoomCenter);
                 }
             }
         });
