@@ -257,9 +257,8 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         toolBar.add(ShowAllAction.get(HideAction.class));
         toolBar.add(ShowAllAction.get(ShowAllAction.class));
         toolBar.addSeparator();
-        toolBar.add(ShowAllAction.get(ZoomOutAction.class));
-        toolBar.add(ShowAllAction.get(ZoomInAction.class));
 
+        toolBar.add(new ZoomLevelAction(scene));
         toolBar.addSeparator();
         ButtonGroup layoutButtons = new ButtonGroup();
 
@@ -410,8 +409,8 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
         scene.zoomIn();
     }
 
-    public void zoomLevel(int percentage) {
-        scene.zoomLevel(percentage);
+    public void setZoomLevel(int percentage) {
+        scene.setZoomLevel(percentage);
     }
 
     public void showPrevDiagram() {
@@ -433,7 +432,11 @@ public final class EditorTopComponent extends TopComponent implements PropertyCh
     }
 
     public static EditorTopComponent getActive() {
-        return (EditorTopComponent) EditorTopComponent.getRegistry().getActivated();
+        try {
+            return (EditorTopComponent) EditorTopComponent.getRegistry().getActivated();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** This method is called from within the constructor to

@@ -34,7 +34,7 @@ public final class ZoomResetAction extends CallableSystemAction {
     public void performAction() {
         EditorTopComponent editor = EditorTopComponent.getActive();
         if (editor != null) {
-            editor.zoomLevel(100);
+            editor.setZoomLevel(100);
         }
     }
 

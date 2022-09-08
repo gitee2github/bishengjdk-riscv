@@ -23,6 +23,8 @@
  */
 package com.sun.hotspot.igv.view;
 
+
+import com.sun.hotspot.igv.data.*;
 import com.sun.hotspot.igv.data.Properties;
 import com.sun.hotspot.igv.data.*;
 import com.sun.hotspot.igv.graph.*;
@@ -51,6 +53,8 @@ import javax.swing.undo.AbstractUndoableEdit;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import org.netbeans.api.visual.action.*;
+import org.netbeans.api.visual.animator.AnimatorEvent;
+import org.netbeans.api.visual.animator.AnimatorListener;
 import org.netbeans.api.visual.animator.SceneAnimator;
 import org.netbeans.api.visual.layout.LayoutFactory;
 import org.netbeans.api.visual.model.*;
@@ -87,8 +91,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
     private DiagramViewModel modelCopy;
     private boolean rebuilding;
 
-    private CustomZoomAnimator zoomAnimator = new CustomZoomAnimator(this.getSceneAnimator());;
-
+    private CustomZoomAnimator zoomAnimator = new CustomZoomAnimator(this, this.getSceneAnimator());
 
     /**
      * The alpha level of partially visible figures.
@@ -152,14 +155,10 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return false;
     }
 
-    private double getZoomToFitFactor() {
+    private double getZoomMinFactor() {
         double factorWidth = getScrollPane().getViewport().getViewRect().getWidth() / getBounds().getWidth() ;
         double factorHeight = getScrollPane().getViewport().getViewRect().getHeight() / getBounds().getHeight();
-        return Math.min(factorWidth, factorHeight);
-    }
-
-    private double getZoomMinFactor() {
-        double zoomToFit = 0.98 * this.getZoomToFitFactor();
+        double zoomToFit = 0.98 * Math.min(factorWidth, factorHeight);
         zoomToFit = Math.max(zoomToFit, this.ZOOM_MIN_FACTOR);
         zoomToFit = Math.min(zoomToFit, 1.0);
         return zoomToFit;
@@ -169,39 +168,57 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
         return this.ZOOM_MAX_FACTOR;
     }
 
+
+
     @Override
-    public void zoomOut() {
-        zoom(1.0 / ZOOM_INCREMENT);
+    public void zoomIn(Point zoomCenter) {
+        animatedZoom(this.zoomAnimator.getTargetZoom() * ZOOM_INCREMENT, zoomCenter);
     }
 
     @Override
     public void zoomOut(Point zoomCenter) {
-        animatedZoom(1.0 / ZOOM_INCREMENT, zoomCenter);
+        animatedZoom(this.zoomAnimator.getTargetZoom() / ZOOM_INCREMENT, zoomCenter);
     }
 
     @Override
-    public void zoomIn() {
-        zoom(ZOOM_INCREMENT);
-    }
-
-    @Override
-    public void zoomIn(Point zoomCenter) {
-        animatedZoom(ZOOM_INCREMENT, zoomCenter);
-    }
-
-    @Override
-    public void zoomLevel(int percentage) {
+    public void setZoomLevel(int percentage) {
         Rectangle visibleRect = this.getView().getVisibleRect();
         Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
         zoomCenter = this.convertViewToScene(zoomCenter);
         this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, zoomCenter);
     }
 
-    private void zoom(double zoomMultiplier) {
-        Rectangle visibleRect = this.getView().getVisibleRect();
+    @Override
+    public int getZoomLevel() {
+        return (int)(zoomAnimator.getTargetZoom() * 100.0);
+    }
 
+    private void animatedZoom(double newZoom, Point zoomCenter) {
+        newZoom = Math.max(newZoom, this.getZoomMinFactor());
+        newZoom = Math.min(newZoom,  this.getZoomMaxFactor());
+        this.zoomAnimator.animateZoomFactor(newZoom, zoomCenter);
+    }
+
+    private ChangedEvent<DiagramViewer> zoomChangedEvent = new ChangedEvent<>(this);
+
+    @Override
+    public ChangedEvent<DiagramViewer> getZoomChangedEvent() {
+        return zoomChangedEvent;
+    }
+
+    @Override
+    public void zoomIn() {
+        zoom(this.getZoomFactor() * ZOOM_INCREMENT);
+    }
+    @Override
+    public void zoomOut() {
+        zoom(this.getZoomFactor() / ZOOM_INCREMENT);
+    }
+
+    private void zoom(double newZoom) {
+        Rectangle visibleRect = this.getView().getVisibleRect();
         double oldZoom = this.getZoomFactor();
-        double newZoom = oldZoom * zoomMultiplier;
+
         newZoom = Math.max(newZoom, this.getZoomMinFactor());
         newZoom = Math.min(newZoom,  this.getZoomMaxFactor());
         this.setZoomFactor(newZoom);
@@ -213,13 +230,8 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
         this.getView().scrollRectToVisible(visibleRect);
         this.validate();
-    }
 
-    private void animatedZoom(double zoomMultiplier, Point zoomCenter) {
-        double zoomFactor = this.zoomAnimator.getTargetZoom() * zoomMultiplier;
-        zoomFactor = Math.max(zoomFactor, this.getZoomMinFactor());
-        zoomFactor = Math.min(zoomFactor,  this.getZoomMaxFactor());
-        this.zoomAnimator.animateZoomFactor(zoomFactor, zoomCenter);
+        this.zoomChangedEvent.fire();
     }
 
     @Override
@@ -1087,7 +1099,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
         double factor = Math.min(viewRect.getWidth() / rect.getWidth(),  viewRect.getHeight() / rect.getHeight());
         if (factor < 1.0) {
-            setZoomFactor(getZoomFactor() * factor);
+            zoom(getZoomFactor() * factor);
             rect.x *= factor;
             rect.y *= factor;
             rect.width *= factor;

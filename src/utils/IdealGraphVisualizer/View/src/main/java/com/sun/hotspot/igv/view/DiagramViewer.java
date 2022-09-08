@@ -24,6 +24,7 @@
 
 package com.sun.hotspot.igv.view;
 
+import com.sun.hotspot.igv.data.ChangedEvent;
 import com.sun.hotspot.igv.graph.Figure;
 
 import java.awt.*;
@@ -37,7 +38,7 @@ import org.openide.util.Lookup;
  *
  * @author Thomas Wuerthinger
  */
-interface DiagramViewer {
+public interface DiagramViewer {
 
     enum InteractionMode {
         SELECTION,
@@ -60,7 +61,11 @@ interface DiagramViewer {
 
     public void zoomIn(Point zoomCenter);
 
-    public void zoomLevel(int percentage);
+    public void setZoomLevel(int percentage);
+
+    public int getZoomLevel();
+
+    public ChangedEvent<DiagramViewer> getZoomChangedEvent();
 
     public UndoRedo getUndoRedo();
 

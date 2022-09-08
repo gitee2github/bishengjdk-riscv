@@ -28,17 +28,22 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import javax.swing.JViewport;
 import org.netbeans.api.visual.animator.Animator;
+import org.netbeans.api.visual.animator.AnimatorEvent;
+import org.netbeans.api.visual.animator.AnimatorListener;
 import org.netbeans.api.visual.animator.SceneAnimator;
 
-public class CustomZoomAnimator extends Animator {
+public class CustomZoomAnimator extends Animator implements AnimatorListener {
     private volatile double sourceZoom;
     private volatile double targetZoom;
     private volatile Point zoomCenter;
     private volatile double oldZoom;
     private volatile Rectangle visibleRect;
+    private DiagramViewer diagramViewer;
 
-    public CustomZoomAnimator(SceneAnimator sceneAnimator) {
+    public CustomZoomAnimator(DiagramViewer viewer, SceneAnimator sceneAnimator) {
         super(sceneAnimator);
+        this.diagramViewer = viewer;
+        super.addAnimatorListener(this);
     }
 
     public synchronized void animateZoomFactor(double zoomFactor, Point zoomCenter) {
@@ -84,7 +89,25 @@ public class CustomZoomAnimator extends Animator {
         this.oldZoom = newZoom;
     }
 
+    @Override
+    public void animatorStarted(AnimatorEvent animatorEvent) {}
+
+    @Override
+    public void animatorPreTick(AnimatorEvent animatorEvent) {}
+
+    @Override
     public void tick(double progress) {
         EventQueue.invokeLater(()->this.do_tick(progress));
     }
+
+    @Override
+    public void animatorPostTick(AnimatorEvent animatorEvent) {}
+
+    @Override
+    public void animatorFinished(AnimatorEvent animatorEvent) {
+        this.diagramViewer.getZoomChangedEvent().fire();
+    }
+
+    @Override
+    public void animatorReset(AnimatorEvent animatorEvent) {}
 }
