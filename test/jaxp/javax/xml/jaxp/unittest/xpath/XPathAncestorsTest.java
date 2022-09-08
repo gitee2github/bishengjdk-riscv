@@ -84,7 +84,7 @@ public class XPathAncestorsTest {
                 //test ancestor
 
                 // abbreviated text
-                {"//author/ancestor::book/ancestor::store", "/store"}, 
+                {"//author/ancestor::book/ancestor::store", "/store"},
                 {"//isbn/ancestor::store", "/store"},
                 {"//ancestor::book[1]", "//book[1]"},
 
