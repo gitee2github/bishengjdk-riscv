@@ -47,7 +47,6 @@ public class CustomZoomAnimator extends Animator implements AnimatorListener {
     }
 
     public synchronized void animateZoomFactor(double zoomFactor, Point zoomCenter) {
-        assert zoomCenter != null;
         if (this.isRunning()) {
             if (this.sourceZoom < this.targetZoom && this.targetZoom < zoomFactor) {
                 this.targetZoom = zoomFactor;
@@ -56,10 +55,15 @@ public class CustomZoomAnimator extends Animator implements AnimatorListener {
             }
         } else {
             this.targetZoom = zoomFactor;
-            this.zoomCenter = zoomCenter;
             this.sourceZoom = this.getScene().getZoomFactor();
             this.oldZoom = this.sourceZoom;
             this.visibleRect = this.getScene().getView().getVisibleRect();
+            if (zoomCenter == null) {
+                this.zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
+                this.zoomCenter =  this.getScene().convertViewToScene(this.zoomCenter);
+            } else {
+                this.zoomCenter = zoomCenter;
+            }
             this.start();
         }
     }

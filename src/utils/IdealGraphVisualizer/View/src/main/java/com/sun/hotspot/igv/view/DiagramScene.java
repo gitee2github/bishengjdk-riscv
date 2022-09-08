@@ -182,10 +182,7 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void setZoomLevel(int percentage) {
-        Rectangle visibleRect = this.getView().getVisibleRect();
-        Point zoomCenter = new Point(visibleRect.x + visibleRect.width / 2, visibleRect.y + visibleRect.height / 2);
-        zoomCenter = this.convertViewToScene(zoomCenter);
-        this.zoomAnimator.animateZoomFactor((double)percentage / 100.0, zoomCenter);
+        this.animatedZoom((double)percentage / 100.0, null);
     }
 
     @Override
@@ -208,11 +205,11 @@ public class DiagramScene extends ObjectScene implements DiagramViewer {
 
     @Override
     public void zoomIn() {
-        zoom(this.getZoomFactor() * ZOOM_INCREMENT);
+        animatedZoom(this.zoomAnimator.getTargetZoom() * ZOOM_INCREMENT, null);
     }
     @Override
     public void zoomOut() {
-        zoom(this.getZoomFactor() / ZOOM_INCREMENT);
+        animatedZoom(this.zoomAnimator.getTargetZoom() / ZOOM_INCREMENT, null);
     }
 
     private void zoom(double newZoom) {
